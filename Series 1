@@ -1,0 +1,149 @@
+import pyaudio
+import pygame
+from gtts import gTTS
+import wave
+import os
+import pickle  # For storing user information
+
+# Define a default directory to store user data
+default_data_directory = "user_data"
+
+# Check if the default data directory exists, and create it if not
+if not os.path.exists(default_data_directory):
+    os.makedirs(default_data_directory)
+
+# Define a dictionary to store user credentials (username, password, and one-time code)
+user_credentials = {}
+
+# Check if a user information file exists and load it
+if os.path.exists('user_info.pkl'):
+    with open('user_info.pkl', 'rb') as file:
+        user_credentials = pickle.load(file)
+
+# Initialize the user's current data directory
+current_data_directory = default_data_directory
+
+# Define the maximum number of login attempts
+max_login_attempts = 3
+login_attempts = 0
+
+# Define a dictionary to store one-time codes
+one_time_codes = {}
+
+def generate_one_time_code():
+    return str(random.randint(1000, 9999))
+
+def authenticate_user():
+    global login_attempts
+    while login_attempts < max_login_attempts:
+        print("Choose an option:")
+        print("1. Register")
+        print("2. Log In")
+        print("3. Quit")
+        choice = input("Enter your choice (1/2/3): ")
+
+        if choice == '1':
+            username = input("Enter a new username: ")
+
+            # Check if the username already exists
+            if username in user_credentials:
+                print("Username already exists. Please choose a different one.")
+                continue
+
+            password = input("Enter a password: ")
+            one_time_code = generate_one_time_code()
+            user_credentials[username] = {"password": password, "one_time_code": one_time_code}
+
+            # Create a directory for the user's data
+            user_directory = os.path.join(default_data_directory, username)
+            os.makedirs(user_directory, exist_ok=True)
+
+            print(f"Registration successful. Your one-time code is: {one_time_code}. You can now log in.")
+
+        elif choice == '2':
+            username = input("Enter your username: ")
+
+            # Check if the entered username exists
+            if username not in user_credentials:
+                print("Username not found. Please register first.")
+                continue
+
+            password = input("Enter your password: ")
+            entered_one_time_code = input("Enter your one-time code: ")
+
+            if (user_credentials[username]["password"] == password and
+                    entered_one_time_code == user_credentials[username]["one_time_code"]):
+                print(f"Authentication successful. Welcome, {username}!")
+                return username
+            else:
+                login_attempts += 1
+                remaining_attempts = max_login_attempts - login_attempts
+                print(f"Authentication failed. {remaining_attempts} attempts remaining.")
+                if remaining_attempts == 0:
+                    print("Maximum login attempts reached. Exiting.")
+                    exit()
+
+        elif choice == '3':
+            # Save user information to a file before exiting
+            with open('user_info.pkl', 'wb') as file:
+                pickle.dump(user_credentials, file)
+            print("Exiting the Voice Testing Environment. Goodbye!")
+            exit()
+
+        else:
+            print("Invalid choice. Please select a valid option (1/2/3).")
+
+def record_audio(filename, duration=10):
+    # ... (rest of the code remains the same)
+
+def text_to_speech(text, output_file):
+    # ... (rest of the code remains the same)
+
+def play_audio(audio_file):
+    # ... (rest of the code remains the same)
+
+print("Welcome to the Voice Testing Environment!")
+
+# Authenticate the user before allowing access to the program
+authenticated_user = authenticate_user()
+
+while True:
+    print("\nChoose an option:")
+    print("1. Record Audio")
+    print("2. Enter Text for Speech")
+    print("3. Quit")
+    choice = input("Enter your choice (1/2/3): ")
+
+    if choice == '1':
+        duration = int(input("Enter the recording duration in seconds: "))
+        filename = input("Enter the filename to save the recording (e.g., 'audio_output.wav'): ")
+
+        # Save the recording in the user's data directory
+        user_directory = os.path.join(current_data_directory, authenticated_user)
+        recording_path = os.path.join(user_directory, filename)
+        record_audio(recording_path, duration)
+        play_audio(recording_path)
+
+        # Ask the user if they want to save the recording
+        save_choice = input("Do you want to save the recording? (y/n): ")
+        if save_choice.lower() == 'y':
+            print("Your recording has been saved.")
+        else:
+            # Delete the recording if the user chooses not to save it
+            os.remove(recording_path)
+            print("Your recording has been discarded.")
+
+    elif choice == '2':
+        user_text = input("Enter the text to convert to speech: ")
+        text_to_speech(user_text, "text_output.mp3")
+        play_audio("text_output.mp3")
+
+    elif choice == '3':
+        # Save user information to a file before exiting
+        with open('user_info.pkl', 'wb') as file:
+            pickle.dump(user_credentials, file)
+        print("Exiting the Voice Testing Environment. Goodbye!")
+        break
+
+    else:
+        print("Invalid choice. Please select a valid option (1/2/3).")
